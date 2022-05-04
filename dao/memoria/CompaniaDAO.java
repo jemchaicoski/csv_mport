@@ -8,7 +8,6 @@ package dao.memoria;
  *
  * @author friend
  */
-import static acesso.TesteAcessoSQLite.URL;
 import dao.CompaniaDAOInterface;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -23,25 +22,18 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import modelo.Compania;
 import org.glassfish.jaxb.runtime.v2.runtime.unmarshaller.XsiNilLoader.Array;
+import java.sql.PreparedStatement;
 
 public class CompaniaDAO implements CompaniaDAOInterface {
 
     private ArrayList<Compania> companias = new ArrayList();
-    public static final String URL = "jdbc:sqlite:C:\\development\\java\\projects\\dw2ed\\bd\\java\\sqlite\\companies_1000.db";
+    public static final String URL = "jdbc:sqlite:C:\\development\\java\\projects\\dw2ed\\bd\\java\\sqlite\\companies.db";
 
 
     @Override
     public ArrayList<Compania> retornarCompanias(){
         Connection con;
         Statement st;
-        
-        try {
-            importFromFile();
-        } catch (ClassNotFoundException ex) {
-            Logger.getLogger(CompaniaDAO.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (SQLException ex) {
-            Logger.getLogger(CompaniaDAO.class.getName()).log(Level.SEVERE, null, ex);
-        }
         
         ArrayList result = new ArrayList<>();
         
@@ -65,13 +57,40 @@ public class CompaniaDAO implements CompaniaDAOInterface {
 
     @Override
     public boolean incluirCompania(Compania nova) {
+        Connection con;
+        Statement st;
+        
         try {
-            companias.add(nova);
+            Class.forName("org.sqlite.JDBC");
+            con = DriverManager.getConnection(URL);
+            st = con.createStatement();
+            PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO compania (\"\",name,domain,\"year founded\",industry,\"size range\"," +
+                "locality,country,\"linkedin url\",\"current employee estimate\",\"total employee estimate\") " +
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+            );
+            populateStatement(ps, nova);
+            ps.executeUpdate();
             return true;
-        } catch (Exception e) {
-            System.out.println("depuração: " + e.getMessage());
-            return false;
+            } catch (ClassNotFoundException | SQLException ex) {
+            Logger.getLogger(CompaniaDAO.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        return false;
+    }
+    
+    protected void populateStatement(PreparedStatement preparedStatement, Compania compania) throws SQLException {
+        preparedStatement.setString(1, compania.getId());
+        preparedStatement.setString(2, compania.getNome());
+        preparedStatement.setString(3, compania.getDominio());
+        preparedStatement.setString(4, compania.getAno());
+        preparedStatement.setString(5, compania.getIndustria());
+        preparedStatement.setString(6, compania.getTamanho());
+        preparedStatement.setString(7, compania.getLocalizacao());
+        preparedStatement.setString(8, compania.getPais());
+        preparedStatement.setString(9, compania.getLinkedin());
+        preparedStatement.setInt(10, compania.getEmpregados_atual());
+        preparedStatement.setInt(11, compania.getEmpregados_total());
     }
     
     public Compania toEntity(ResultSet result){
@@ -104,7 +123,7 @@ public class CompaniaDAO implements CompaniaDAOInterface {
             String linha = new String();
             Scanner leitor = new Scanner(arquivoCSV);
             leitor.nextLine();
-            while(leitor.hasNext()){
+//            while(leitor.hasNext()){
                     linha = leitor.nextLine();
                     String[] vetor = linha.split(",");              
                     //name,domain,year founded,industry,size range,locality,country,linkedin url,current employee estimate,total employee estimate
@@ -118,37 +137,28 @@ public class CompaniaDAO implements CompaniaDAOInterface {
                     vetor[6]!=null ? vetor[6]: "",
                     vetor[7]!=null ? vetor[7]: "",
                     vetor[8]!=null ? vetor[8]: "");
-                    
-            
             con = DriverManager.getConnection(URL);
             st = con.createStatement();
-            st.executeQuery("insert into compania("
-                    + "id,"
-                    + "name,"
-                    + "domain,"
-                    + "year founded,"
-                    + "industry,"
-                    + "size range,"
-                    + "locality,"
-                    + "country,"
-                    + "linkedin url)"
-                    + "VALUES "
-                    + c.getId() + ","
-                    + c.getNome()+ ","
-                    + c.getDominio()+ ","
-                    + c.getAno()+ ","
-                    + c.getIndustria()+ ","
-                    + c.getTamanho()+ ","
-                    + c.getLocalizacao()+ ","
-                    + c.getPais()+ ","
-                    + c.getLinkedin()+ ","
-                    + "0" + ","
-                    + "0"
-                    ); 
-            }
+            new CompaniaDAO().incluirCompania(c);
+//            }
         } catch(FileNotFoundException e){
             System.out.println(e.getMessage());
         }
     }
     
+        public void clearAllData(){
+        try {
+            Connection con;
+            Statement st;
+            
+            Class.forName("org.sqlite.JDBC");
+            con = DriverManager.getConnection(URL);
+            st = con.createStatement();
+            st.executeUpdate("delete from compania");
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(CompaniaDAO.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SQLException ex) {
+            Logger.getLogger(CompaniaDAO.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }
